@@ -1,5 +1,5 @@
 ---
-# file: roles/base/tasks/apt.yaml
+# file: roles/base/tasks/logwatch.yaml
 # Sets up logwatch to monitor server and send emails
 - name: Set up Postfix to relay mail
   debconf: name=postfix
