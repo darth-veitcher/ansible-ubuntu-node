@@ -7,3 +7,6 @@
 
 # Logwatch
 - include: logwatch.yaml
+
+# Users
+- include: users.yaml

@@ -1,0 +1,11 @@
+---
+# file: roles/base/tasks/users.yaml
+# Sets up initial admin user
+
+- name: create admin user {{ deploy_user_name }}
+  user:
+    name: "{{ deploy_user_name }}"
+    shell: /bin/bash
+    append: yes
+    groups: sudo
+  tags: user
