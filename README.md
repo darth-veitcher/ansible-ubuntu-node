@@ -6,7 +6,13 @@ Having done a fair bit of experimentation lately in the homelab it felt like it 
 ## How to use
 ```bash
 # Uses an (optional) ansible config file
-export ANSIBLE_CONFIG=ansible.cfg && ansible-playbook -kb --ask-become-pass -i inventoryFile role.yml -vvvv
+export ANSIBLE_CONFIG=ansible.cfg
+
+# Call the base role directly and accept default hosts
+ansible-playbook -kb --ask-become-pass -i inventoryFile base.yaml -vvvv
+
+# Alternatively, specify the hosts or group (as opposed to `all`)
+ansible-playbook -kb --ask-become-pass -i inventoryFile -l host_or_group base.yml
 ```
 
 ## What's in the box
