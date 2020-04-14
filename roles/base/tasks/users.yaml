@@ -9,3 +9,10 @@
     append: yes
     groups: sudo
   tags: user
+
+- name: add authorized_key
+  authorized_key:
+    user: "{{ deploy_user_name }}"
+    state: present
+    key: "{{ lookup('file', '{{ deploy_user_ssh_key }}') }}"
+  tags: user, ssh

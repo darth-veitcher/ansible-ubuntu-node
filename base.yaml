@@ -7,8 +7,13 @@
     - name: "logwatch_email"
       prompt: "Enter email address for logwatch email delivery"
       private: "no"
-  vars:
-    deploy_user_name: adminlocal
-    deploy_user_ssh_key: ansible.id_rsa
+    - name: "deploy_user_name"
+      prompt: "Name of admin user"
+      private: "no"
+      default: "adminlocal"
+    - name: "deploy_user_ssh_key"
+      prompt: "Path to existing public ssh key"
+      private: "no"
+      default: "~/.ssh/ansible.id_rsa.pub"
   roles:
     - base
