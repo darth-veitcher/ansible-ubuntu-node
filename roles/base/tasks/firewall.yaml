@@ -1,0 +1,59 @@
+---
+# file: roles/base/tasks/ssh.yaml
+# Performs some basic firewall config setup and hardening
+
+# UFW
+- name: install ufw
+  apt: 
+    name: ufw
+    state: latest
+    install_recommends: no
+  tags: apt, firewall
+
+- name: setup ufw
+  ufw: state=disabled policy=deny  # disable so we can allow SSH first....
+  tags: firewall
+
+- name: allow ssh traffic (with rate limiting)
+  ufw: rule=limit name=OpenSSH
+  tags: firewall, ssh
+
+- name: allow private subnets
+  ufw:
+    rule: allow
+    src: '{{ item }}'
+  loop:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+  tags: firewall
+
+# Fail2Ban
+- name: install fail2ban
+  apt: 
+    name: fail2ban
+    state: latest
+    install_recommends: no
+  tags: apt, firewall, fail2ban
+
+- name: create custom fail2ban ssh filter
+  template: >
+            src=templates/fail2ban/ssh.filter.conf.j2
+            dest=/etc/fail2ban/filter.d/ssh-nokey.conf owner=root group=root mode=0644
+  tags: firewall, fail2ban
+
+- name: create local fail2ban jail
+  template: >
+            src=templates/fail2ban/ssh.jail.conf.j2
+            dest=/etc/fail2ban/jail.d/ssh.conf owner=root group=root mode=0644
+  tags: firewall, fail2ban
+
+- name: enable fail2ban
+  service: name=fail2ban state=restarted enabled=yes
+  tags: firewall, fail2ban
+
+# FINALLY
+- name: enable ufw
+  ufw: state=enabled
+  notify: restart ufw
+  tags: firewall

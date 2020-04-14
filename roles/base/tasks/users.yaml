@@ -15,4 +15,12 @@
     user: "{{ deploy_user_name }}"
     state: present
     key: "{{ lookup('file', '{{ deploy_user_ssh_key }}') }}"
-  tags: user, ssh
+  tags: users, ssh
+
+- name: allow passwordless sudo for {{ deploy_user_name }}
+  lineinfile: dest=/etc/sudoers
+              regexp="^{{ deploy_user_name }} ALL="
+              line="{{ deploy_user_name }} ALL=(ALL:ALL) NOPASSWD:ALL"
+              state=present
+              validate="/usr/sbin/visudo -cf %s"
+  tags: users

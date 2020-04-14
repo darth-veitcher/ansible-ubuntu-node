@@ -11,8 +11,9 @@ export ANSIBLE_CONFIG=ansible.cfg
 # Call the base role directly and accept default hosts
 ansible-playbook -kb --ask-become-pass -i inventoryFile base.yaml -vvvv
 
-# Alternatively, specify the hosts or group (as opposed to `all`)
-ansible-playbook -kb --ask-become-pass -i inventoryFile -l host_or_group base.yml
+# Alternatively, specify the hosts or group (as opposed to `all`). Here
+# I'm using the `testvm` host from the example hosts inventory file.
+ansible-playbook -kb --ask-become-pass -i hosts -l testvm base.yaml
 ```
 
 ## What's in the box

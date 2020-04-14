@@ -1,0 +1,39 @@
+---
+# file: roles/base/tasks/ssh.yaml
+# Performs some basic ssh/sshd config setup and hardening
+- name: enable authorized_keys
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^#?AuthorizedKeysFile"
+              line="AuthorizedKeysFile %h/.ssh/authorized_keys"
+              state=present
+              validate="sshd -T -f %s"
+  notify: restart ssh
+  tags: users, ssh
+
+# Lock down SSH
+- name: disallow password authentication
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^PasswordAuthentication"
+              line="PasswordAuthentication no"
+              state=present
+              validate="sshd -T -f %s"
+  notify: restart ssh
+  tags: ssh
+
+- name: enable public key authentication
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^.*PubkeyAuthentication"
+              line="PubkeyAuthentication yes"
+              state=present
+              validate="sshd -T -f %s"
+  notify: restart ssh
+  tags: ssh
+
+- name: disallow root SSH access
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^PermitRootLogin"
+              line="PermitRootLogin no"
+              state=present
+              validate="sshd -T -f %s"
+  notify: restart ssh
+  tags: ssh
