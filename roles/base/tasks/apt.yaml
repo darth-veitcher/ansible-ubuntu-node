@@ -1,6 +1,6 @@
 ---
 # file: roles/base/tasks/apt.yaml
-# Conatins simple tasks to configure APT
+# Contains simple tasks to configure APT
 - name: update APT package cache
   apt: update_cache=yes cache_valid_time=3600
   tags: apt
