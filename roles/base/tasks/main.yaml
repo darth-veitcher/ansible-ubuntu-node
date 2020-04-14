@@ -1,0 +1,9 @@
+---
+# file: roles/base/tasks/main.yaml
+# Contains basic setup tasks for Ubuntu
+
+# APT
+- include: apt.yaml
+
+# Logwatch
+- include: logwatch.yaml
