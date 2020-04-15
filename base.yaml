@@ -15,5 +15,9 @@
       prompt: "Path to existing public ssh key"
       private: "no"
       default: "~/.ssh/id_rsa.pub"
+    - name: "regenerate_moduli"
+      prompt: "Regenerate Moduli (recommended but slow) [yes/no]"
+      private: "no"
+      default: "no"
   roles:
     - base
