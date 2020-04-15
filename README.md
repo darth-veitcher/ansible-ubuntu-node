@@ -38,6 +38,4 @@ This repo includes:
   * p7zip
   * nano
   * git
-
-### Announce
-* Avahi mDNS broadcast capabilities
+* Avahi mDNS broadcast capabilities for service discovery (optional)

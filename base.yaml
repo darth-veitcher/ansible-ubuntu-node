@@ -19,5 +19,8 @@
       prompt: "Regenerate Moduli (recommended but slow) [yes/no]"
       private: "no"
       default: "no"
+    - name: "enable_avahi"
+      prompt: "Enable service discovery [yes/no]"
+      default: "yes"
   roles:
     - base

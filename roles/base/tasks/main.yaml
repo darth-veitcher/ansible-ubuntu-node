@@ -14,3 +14,7 @@
 # SSH and Firewall hardening
 - include: ssh.yaml
 - include: firewall.yaml
+
+# Avahi service discovery (optional)
+- include: avahi.yaml
+  when: enable_avahi is undefined or enable_avahi|bool is true
