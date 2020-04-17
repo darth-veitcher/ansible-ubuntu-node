@@ -1,0 +1,110 @@
+---
+# file: roles/syncuser/tasks/main.yaml
+# Creates a limited user who is chrooted to their $HOME
+# directory and only allowed to perform limited commands,
+# mainly sftp and rsync.
+
+- name: ensure group {{ chroot_group }} exists
+  group:
+    name: "{{ chroot_group }}"
+    state: present
+  tags: users, syncuser
+
+- name: ensure user {{ sync_user }} exists
+  user:
+    name: "{{ sync_user }}"
+    state: present
+    home: "{{ chroot_home }}{{ sync_user }}"
+    create_home: no
+    groups: "{{ chroot_group }}"
+  tags: users, syncuser
+
+- name: ensure group {{ chroot_group }} is in sshd_config
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    state: present
+    block: |
+      Match group {{ chroot_group }}
+        ChrootDirectory %h
+        X11Forwarding no
+        ForceCommand internal-sftp
+        AllowTcpForwarding no
+    validate: sshd -T -f %s
+  tags: users, syncuser, ssh
+
+- name: ensure Subsystem is internal-sftp
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    state: present
+    regex: ^#?Subsystem.*sftp
+    line: Subsystem sftp internal-sftp
+    validate: sshd -T -f %s
+  tags: users, syncuser, ssh
+
+- name: add sftp-server to shells
+  lineinfile:
+    path: /etc/shells
+    state: present
+    line: /usr/lib/sftp-server
+  tags: users, syncuser, ssh
+
+- name: ensure home exists and is owned by root
+  file:
+    path: "{{ chroot_home }}{{ sync_user }}"
+    state: directory
+    owner: root
+    group: root
+
+- name: add authorized_key
+  authorized_key:
+    user: "{{ sync_user }}"
+    state: present
+    key: "{{ lookup('file', '{{ sync_user_ssh_key }}') }}"
+  tags: users, ssh
+
+- name: create user uploads and downloads directories
+  file:
+    path: "{{ chroot_home }}{{ sync_user }}/{{ item }}"
+    state: directory
+    owner: "{{ sync_user }}"
+    group: "{{ sync_user }}"
+  loop:
+    - uploads
+    - downloads
+
+- name: chown ~/.ssh
+  file:
+    path: "{{ chroot_home }}{{ sync_user }}/.ssh"
+    state: directory
+    recurse: yes
+    owner: "{{ sync_user }}"
+    group: "{{ sync_user }}"
+  tags: users, ssh
+
+- name: checking for AllowGroups in sshd_config
+  shell: cat /etc/ssh/sshd_config | grep AllowGroups | wc -l
+  register: test_allowgroups
+  tags: ssh
+
+- name: allow {{ chroot_group }}
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^#?AllowGroups"
+              line="AllowGroups {{ chroot_group }}"
+              state=present
+              validate="sshd -T -f %s"
+  notify: restart ssh
+  tags: ssh
+  when: test_allowgroups.stdout|int == 0
+
+# Append to any existing allowed groups with backrefs
+- name: append {{ chroot_group }} to existing allowances
+  lineinfile: 
+    path: /etc/ssh/sshd_config
+    regexp: ^#?(AllowGroups((?!.*\b{{ chroot_group }}\b).*))$
+    line: \1 {{ chroot_group }}
+    backrefs: yes
+    state: present
+    validate: sshd -T -f %s
+  notify: restart ssh
+  tags: ssh
+  when: test_allowgroups.stdout|int > 0

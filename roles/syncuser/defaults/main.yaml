@@ -1,0 +1,4 @@
+sync_user: syncuser
+sync_user_ssh_key: "~/.ssh/id_rsa.pub"
+chroot_home: /home/
+chroot_group: limited

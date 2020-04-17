@@ -1,0 +1,26 @@
+---
+# file: base.yaml
+# Playbook to deploy the `base` role onto a server
+- hosts: all
+  become: true
+  # vars_prompt:
+  #   - name: "logwatch_email"
+  #     prompt: "Enter email address for logwatch email delivery"
+  #     private: "no"
+  #   - name: "deploy_user_name"
+  #     prompt: "Name of admin user"
+  #     private: "no"
+  #     default: "adminlocal"
+  #   - name: "deploy_user_ssh_key"
+  #     prompt: "Path to existing public ssh key"
+  #     private: "no"
+  #     default: "~/.ssh/id_rsa.pub"
+  #   - name: "regenerate_moduli"
+  #     prompt: "Regenerate Moduli (recommended but slow) [yes/no]"
+  #     private: "no"
+  #     default: "no"
+  #   - name: "enable_avahi"
+  #     prompt: "Enable service discovery [yes/no]"
+  #     default: "yes"
+  roles:
+    - syncuser

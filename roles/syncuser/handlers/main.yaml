@@ -1,0 +1,4 @@
+---
+# file: roles/syncuser/handlers/main.yml
+- name: restart ssh
+  service: name=ssh state=restarted enabled=yes
