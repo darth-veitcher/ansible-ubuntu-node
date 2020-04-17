@@ -77,12 +77,13 @@
 
 # Append to any existing allowed groups with backrefs
 - name: append {{ ssh_users_group }} to existing allowances
-  lineinfile: dest=/etc/ssh/sshd_config
-              regexp="^#?(AllowGroups(?!.*\b{{ ssh_users_group }}\b).*)$"
-              line="\1 {{ ssh_users_group }}"
-              backrefs=yes
-              state=present
-              validate="sshd -T -f %s"
+  lineinfile: 
+    path: /etc/ssh/sshd_config
+    regexp: ^#?(AllowGroups((?!.*\b{{ ssh_users_group }}\b).*))$
+    line: \1 {{ ssh_users_group }}
+    backrefs: yes
+    state: present
+    validate: sshd -T -f %s
   notify: restart ssh
   tags: ssh
   when: test_allowgroups.stdout|int > 0
