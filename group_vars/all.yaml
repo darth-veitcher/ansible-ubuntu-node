@@ -1,0 +1,4 @@
+---
+# file: group_vars/all.yml
+# `global` variables to be shared between underlying roles
+ssh_users_group: ssh-users
