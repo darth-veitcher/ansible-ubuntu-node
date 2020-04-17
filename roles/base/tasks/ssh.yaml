@@ -10,6 +10,19 @@
   notify: restart ssh
   tags: users, ssh
 
+- name: ensure group {{ ssh_users_group }} exists
+  group:
+    name: "{{ ssh_users_group }}"
+    state: present
+  tags: users, ssh
+
+- name: assign {{ deploy_user_name }} to {{ ssh_users_group }} group
+  user:
+    name: "{{ deploy_user_name }}"
+    state: present
+    append: yes
+    groups: "{{ ssh_users_group }}"
+
 # Lock down SSH
 - name: disable password authentication
   lineinfile: dest=/etc/ssh/sshd_config
@@ -38,14 +51,41 @@
   notify: restart ssh
   tags: ssh
 
-- name: only allow {{ deploy_user_name }}
+# - name: only allow {{ deploy_user_name }}
+#   lineinfile: dest=/etc/ssh/sshd_config
+#               regexp="^#?AllowUsers"
+#               line="AllowUsers {{ deploy_user_name }}"
+#               state=present
+#               validate="sshd -T -f %s"
+#   notify: restart ssh
+#   tags: ssh
+
+- name: checking for AllowGroups in sshd_config
+  shell: cat /etc/ssh/sshd_config | grep AllowGroups | wc -l
+  register: test_allowgroups
+  tags: ssh
+
+- name: allow {{ ssh_users_group }}
   lineinfile: dest=/etc/ssh/sshd_config
-              regexp="^#?AllowUsers"
-              line="AllowUsers {{ deploy_user_name }}"
+              regexp="^#?AllowGroups"
+              line="AllowGroups {{ ssh_users_group }}"
               state=present
               validate="sshd -T -f %s"
   notify: restart ssh
   tags: ssh
+  when: test_allowgroups.stdout|int == 0
+
+# Append to any existing allowed groups with backrefs
+- name: append {{ ssh_users_group }} to existing allowances
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^#?(AllowGroups(?!.*\b{{ ssh_users_group }}\b).*)$"
+              line="\1 {{ ssh_users_group }}"
+              backrefs=yes
+              state=present
+              validate="sshd -T -f %s"
+  notify: restart ssh
+  tags: ssh
+  when: test_allowgroups.stdout|int > 0
 
 - name: disable X11Forwarding
   lineinfile: dest=/etc/ssh/sshd_config
