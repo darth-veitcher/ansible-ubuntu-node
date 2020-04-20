@@ -4,6 +4,17 @@ This is a basic ansible playbook for bootstrapping an Ubuntu 18.04 installation 
 Having done a fair bit of experimentation lately in the homelab it felt like it was time to get something updated and available to automate a lot of the initial prep in 2020.
 
 ## How to use
+This might seem obvious but [install Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) first.
+
+```bash
+pip install --user ansible
+
+# Alternatively using the provided Pipfile
+pipenv install
+```
+
+Now run the playbooks for whatever role you're interested in.
+
 ```bash
 # Uses an (optional) ansible config file
 export ANSIBLE_CONFIG=ansible.cfg
