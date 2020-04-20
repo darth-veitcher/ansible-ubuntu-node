@@ -39,3 +39,7 @@ This repo includes:
   * nano
   * git
 * Avahi mDNS broadcast capabilities for service discovery (optional)
+
+### Limited Accounts
+* `syncuser` role for enabling sftp-only access to a server for a specified user+group
+* `chrootuser` role for enabling chrooted shell access (incl. rsync) for a specified user+group
