@@ -1,0 +1,116 @@
+---
+# file: roles/chrootuser/tasks/main.yaml
+# Creates a limited user who is chrooted to their $HOME
+# builds on a number of tutorials and previous bits of work
+# but special thanks to:
+# https://linuxconfig.org/how-to-automatically-chroot-jail-selected-ssh-user-logins
+# https://unix.stackexchange.com/a/128048
+- name: ensure group {{ chroot_group }} exists
+  group:
+    name: "{{ chroot_group }}"
+    state: present
+  tags: users, chrootuser
+
+- name: ensure user {{ chroot_user }} exists
+  user:
+    name: "{{ chroot_user }}"
+    state: present
+    home: "{{ chroot_home }}{{ chroot_user }}"
+    shell: /bin/bash
+    create_home: no
+    groups: "{{ chroot_group }}"
+  tags: users, chrootuser
+
+- name: ensure group {{ chroot_group }} is in sshd_config
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    state: present
+    block: |
+      Match group {{ chroot_group }}
+        ChrootDirectory %h
+        X11Forwarding no
+        # ForceCommand fakechroot chroot %h
+        AllowTcpForwarding no
+    validate: sshd -T -f %s
+  tags: users, chrootuser, ssh
+
+- name: ensure home exists and is owned by root
+  file:
+    path: "{{ chroot_home }}{{ chroot_user }}"
+    state: directory
+    owner: root
+    group: root
+
+- name: create additional chroot directories
+  file:
+    path: "{{ chroot_home }}{{ chroot_user }}/{{ item.name }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+  loop:
+    - { name: bin, owner: root, group: root }
+
+# NB: can generate these from `ldd /bin/bash`
+- name: copy chroot files across
+  shell: |
+    cp -pr /bin/bash {{ chroot_home }}{{ chroot_user }}/bin/.  
+    cp -pr /bin/ls {{ chroot_home }}{{ chroot_user }}/bin/.
+    cp -pr /usr {{ chroot_home }}{{ chroot_user }}/.
+    cp -pr /lib {{ chroot_home }}{{ chroot_user }}/.  
+    cp -pr /lib64 {{ chroot_home }}{{ chroot_user }}/.
+
+- name: create user owned directories
+  file:
+    path: "{{ chroot_home }}{{ chroot_user }}/{{ item.name }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+  loop:
+    - { name: uploads, owner: "{{ chroot_user }}", group: "{{ chroot_user }}" }
+    - { name: downloads, owner: "{{ chroot_user }}", group: "{{ chroot_user }}" }
+    - { name: downloads/TV, owner: "{{ chroot_user }}", group: "{{ chroot_user }}" }
+    - { name: downloads/Movies, owner: "{{ chroot_user }}", group: "{{ chroot_user }}" }
+
+- name: add authorized_key
+  authorized_key:
+    user: "{{ chroot_user }}"
+    state: present
+    key: "{{ lookup('file', '{{ chroot_user_ssh_key }}') }}"
+  tags: users, ssh
+
+- name: chown ~/.ssh
+  file:
+    path: "{{ chroot_home }}{{ chroot_user }}/.ssh"
+    state: directory
+    recurse: yes
+    owner: "{{ chroot_user }}"
+    group: "{{ chroot_user }}"
+  tags: users, ssh
+
+- name: checking for AllowGroups in sshd_config
+  shell: cat /etc/ssh/sshd_config | grep AllowGroups | wc -l
+  register: test_allowgroups
+  tags: ssh
+
+- name: allow {{ chroot_group }}
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^#?AllowGroups"
+              line="AllowGroups {{ chroot_group }}"
+              state=present
+              validate="sshd -T -f %s"
+  notify: restart ssh
+  tags: ssh
+  when: test_allowgroups.stdout|int == 0
+
+# Append to any existing allowed groups with backrefs
+- name: append {{ chroot_group }} to existing allowances
+  lineinfile: 
+    path: /etc/ssh/sshd_config
+    regexp: ^#?(AllowGroups((?!.*\b{{ chroot_group }}\b).*))$
+    line: \1 {{ chroot_group }}
+    backrefs: yes
+    state: present
+    validate: sshd -T -f %s
+  notify: restart ssh
+  tags: ssh
+  when: test_allowgroups.stdout|int > 0

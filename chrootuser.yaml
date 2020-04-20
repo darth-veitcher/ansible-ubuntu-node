@@ -1,0 +1,9 @@
+---
+# file: base.yaml
+# Playbook to deploy the `chrootuser` role onto a server
+- hosts: all
+  become: true
+  vars:
+    chroot_user: ltd
+  roles:
+    - chrootuser

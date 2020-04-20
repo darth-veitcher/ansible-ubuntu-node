@@ -1,0 +1,4 @@
+chroot_user: chrootuser
+chroot_user_ssh_key: "~/.ssh/id_rsa.pub"
+chroot_home: /var/chroot/home/
+chroot_group: limited
