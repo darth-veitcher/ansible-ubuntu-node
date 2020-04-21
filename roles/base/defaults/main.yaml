@@ -8,7 +8,7 @@ logwatch_email: ""
 
 # Administrative user to create and their associated public ssh key
 # on local machine (to copy across to authorized_keys)
-deploy_user_name: "adminlocal"
+# deploy_user_name: "adminlocal"
 deploy_user_ssh_key: "~/.ssh/id_rsa.pub"
 
 # Whether to regenerate the moduli as part of hardening. Takes a long
