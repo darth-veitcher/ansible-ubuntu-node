@@ -19,6 +19,7 @@
     name: ['nano', 'wget', 'curl', 'p7zip-full']
     state: latest
     install_recommends: no
+    update_cache: yes
   tags: apt
 
 - name: Remove useless packages from the cache
