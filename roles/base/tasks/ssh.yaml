@@ -97,6 +97,12 @@
   notify: restart ssh
   tags: ssh
 
+# ANTI-LOCKOUT
+- name: switch playbook to use new user credentials going forwards
+  set_fact:
+    ansible_user: "{{ deploy_user_name }}"
+    ansible_ssh_private_key_file: "{{ deploy_user_ssh_key }}"
+
 # Perform tinfoil hat adjustments
 # https://stribika.github.io/2015/01/04/secure-secure-shell.html
 # https://medium.com/@jasonrigden/hardening-ssh-1bcb99cd4cef
