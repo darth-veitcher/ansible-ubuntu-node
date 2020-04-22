@@ -1,0 +1,8 @@
+---
+# file: base.yaml
+# Playbook to deploy the `base` role onto a server
+- hosts: all
+  become: true
+  roles:
+    - base
+    - kvm

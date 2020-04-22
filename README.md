@@ -54,3 +54,6 @@ This repo includes:
 ### Limited Accounts
 * `syncuser` role for enabling sftp-only access to a server for a specified user+group
 * `chrootuser` role for enabling chrooted shell access (incl. rsync) for a specified user+group
+
+### KVM
+A simple set of steps to ensure the node has the ability to support virtualisation via KVM (**K**ernel-based **V**irtual **M**achine).

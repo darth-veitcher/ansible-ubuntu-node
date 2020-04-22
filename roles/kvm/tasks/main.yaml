@@ -1,0 +1,40 @@
+---
+# file: roles/kvm/tasks/main.yaml
+# Sets up KVM virtualisation on Ubuntu
+# Special thanks to:
+#   - https://www.ostechnix.com/setup-headless-virtualization-server-using-kvm-ubuntu/
+#   - https://github.com/foxlet/macOS-Simple-KVM
+
+- name: check system supports hardware virtualisation
+  shell: egrep -c '(vmx|svm)' /proc/cpuinfo
+  register: hwenabled
+  tags: kvm
+
+- name: abort if hardware virtualisation disabled
+  fail: msg="Hardware Virtualisation Disabled in BIOS or not available"
+  when: hwenabled.stdout|int == 0
+  tags: kvm
+
+- name: update APT package cache
+  apt: update_cache=yes cache_valid_time=3600
+  tags: apt, kvm
+
+- name: install virtualisation packages
+  apt:
+    name: [qemu, qemu-system, qemu-utils, qemu-kvm, libvirt-bin, virtinst, bridge-utils, cpu-checker]
+    state: latest
+    install_recommends: no
+  tags: apt, kvm
+
+- name: enable libvirtd
+  service: name=libvirtd state=restarted enabled=yes
+  tags: firewall, kvm
+
+- name: chown .iso storage
+  file:
+    path: /var/lib/libvirt/boot/
+    state: directory
+    recurse: yes
+    owner: "{{ deploy_user_name }}"
+    group: "{{ deploy_user_name }}"
+  tags: users, ssh
