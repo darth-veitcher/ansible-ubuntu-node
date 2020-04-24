@@ -57,3 +57,6 @@ This repo includes:
 
 ### KVM
 A simple set of steps to ensure the node has the ability to support virtualisation via KVM (**K**ernel-based **V**irtual **M**achine).
+
+### K3S
+Highly available kubernetes cluster (via k3s) using the [experimental embedded database](https://rancher.com/docs/k3s/latest/en/installation/ha-embedded/) support.

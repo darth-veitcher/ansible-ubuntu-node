@@ -1,0 +1,3 @@
+---
+# file: roles/k3s/tasks/wireguard.yaml
+# Sets up pre-requisites for Wireguard VPN

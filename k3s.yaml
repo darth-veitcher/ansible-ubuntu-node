@@ -1,0 +1,19 @@
+---
+# file: base.yaml
+# Playbook to deploy the `master` k3s role onto a server 
+# to bootstrap a cluster
+- hosts: masters
+  become: true
+  roles:
+    - base
+    - k3s
+
+- hosts: slaves
+  become: true
+  vars:
+    # master_node: asimov.local
+    master_node: 172.16.210.154
+  roles:
+    - base
+    - kvm
+    - k3s

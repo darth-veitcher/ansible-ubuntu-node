@@ -1,0 +1,8 @@
+---
+# file: roles/k3s/defaults/main.yaml
+
+CIDR: 10.244.0.0/16
+
+# Generate a new one of these please...
+# head -c48 /dev/urandom | base64 | tr -d "\n"
+K3S_TOKEN: g0hzuguv0CwL1EaAgju7aP8DxOKyQOQ3/ies0tEjmaV5I5Mj1HQFClilTQNDwo4l
