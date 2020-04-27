@@ -2,6 +2,10 @@
 # file: roles/base/tasks/main.yaml
 # Contains basic setup tasks for Ubuntu
 
+# Hostname
+- name: Set hostname to inventory hostname
+  hostname: name={{inventory_hostname}}
+
 # APT
 - include: apt.yaml
 

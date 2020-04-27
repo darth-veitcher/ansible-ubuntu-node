@@ -2,6 +2,19 @@
 # file: roles/k3s/tasks/main.yaml
 # Installs lightweight kubernetes (K3s)
 # https://www.k3s.io
+
+# Internal Variable
+- name: initialise list of configured nodes
+  set_fact:
+    configured_nodes: []
+  tags: k3s
+
+# VPN between nodes
+- include: wireguard.yaml
+  when: use_wireguard is defined and use_wireguard|bool
+  tags: wireguard, k3s
+
+# Firewall
 - name: install ufw profile for k3s
   template: >
             src=templates/ufw/k3s.conf.j2
@@ -12,61 +25,34 @@
   shell: ufw app update k3s
   tags: firewall, k3s
 
-- name: allow access from {{ CIDR }} to k3s
+- name: allow access from {{ CIDR }} and localhost to k3s
   ufw:
     rule: allow
     name: k3s
-    src: "{{ CIDR }}"
+    src: "{{ item }}"
+  loop:
+    - 127.0.0.1
+    - "{{ CIDR }}"
   tags: firewall, k3s
 
-- name: check for k3s uninstaller (master)
-  stat:
-    path: /usr/local/bin/k3s-uninstall.sh
-  tags: k3s
-  register: k3s_installed_master
-
-- name: uninstall k3s if found (master)
-  shell: /usr/local/bin/k3s-uninstall.sh
-  when: k3s_installed_master.stat.exists|bool
+# K3s installation
+- name: get static hostname (used by kubernetes to identify node)
+  shell: hostnamectl --static
+  register: static_hostname
   tags: k3s
 
-- name: check for k3s uninstaller (agent)
-  stat:
-    path: /usr/local/bin/k3s-agent-uninstall.sh
+- name: Point hostname to localhost (k3s requirement)
+  lineinfile:
+    path: /etc/hosts
+    line: "127.0.0.1 {{static_hostname.stdout}}"
   tags: k3s
-  register: k3s_installed_agent
-
-- name: uninstall k3s if found (agent)
-  shell: /usr/local/bin/k3s-agent-uninstall.sh
-  when: k3s_installed_agent.stat.exists|bool
-  tags: k3s
-
-- name: install k3s (master)
-  shell: |
-    export K3S_KUBECONFIG_MODE="644"; \
-    export INSTALL_K3S_EXEC="--no-deploy traefik --cluster-cidr {{ CIDR }} --cluster-init"; \
-    export K3S_TOKEN="{{ K3S_TOKEN }}"; \
-    curl -sfL https://get.k3s.io | sh -
-  tags: k3s, create-cluster, cluster
-  when: master_node is not defined
-  register: k3s_installed
-
-- name: install k3s (join existing cluster)
-  shell: |
-    export K3S_KUBECONFIG_MODE="644"; \
-    export INSTALL_K3S_EXEC="server --server https://{{ master_node }}:6443"; \
-    export K3S_TOKEN="{{ K3S_TOKEN }}"; \
-    curl -sfL https://get.k3s.io | sh -
-  tags: k3s, join-cluster, cluster
-  when: master_node is defined
-  register: k3s_installed
 
 - name: find {{deploy_user_name}} $HOME directory
   shell: cat /etc/passwd | grep {{deploy_user_name}} | cut -d":" -f6
   register: user_home
   tags: k3s
 
-- name: ensure {{user_home}}/.kube exists and is owned by {{deploy_user_name}}
+- name: ensure {{user_home.stdout}}/.kube exists and is owned by {{deploy_user_name}}
   file:
     path: "{{user_home.stdout}}/.kube"
     state: directory
@@ -74,9 +60,27 @@
     group: "{{deploy_user_name}}"
   tags: k3s
 
-  # k3s writes config to /etc/rancher/k3s/k3s.yaml
-  # by convention this should be available to our user at ~/.kube/config
-- name: setup kubeconfig
-  shell: kubectl config view --raw >{{user_home.stdout}}/.kube/config
-  tags: k3s, join-cluster, cluster
-  when: k3s_installed is defined
+# Remove previous installs
+- include: clean-install.yaml
+  when: clean_install is not defined or clean_install|bool is not false
+  tags: k3s
+
+# Initialise Cluster
+- include: init-cluster.yaml
+  when: master_node is not defined or master_node == ansible_default_ipv4.address or master_node == ansible_fqdn
+  tags: k3s, cluster
+
+- name: list configured nodes
+  debug: var=configured_nodes
+  tags: k3s, cluster
+
+# VPN
+- include: kilo.yaml
+  when: use_wireguard is defined and use_wireguard|bool
+  run_once: yes
+  tags: k3s, kilo
+
+# Join existing cluster
+- include: join-cluster.yaml
+  when: k3s_server_address is defined and ansible_default_ipv4.address not in configured_nodes
+  tags: k3s, cluster

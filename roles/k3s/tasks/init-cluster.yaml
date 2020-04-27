@@ -1,0 +1,70 @@
+# file: roles/k3s/tasks/init-cluster.yaml
+# Initialises a new cluster using the current node as master.
+
+# K3S
+- name: install k3s (master, no vpn)
+  shell: |
+    export CIDR="{{ CIDR }}"; \
+    export K3S_KUBECONFIG_MODE="644"; \
+    export INSTALL_K3S_EXEC="--no-deploy traefik --cluster-cidr $CIDR --cluster-init"; \
+    curl -sfL https://get.k3s.io | sh -
+  become: yes
+  tags: k3s, create-cluster, cluster
+  when: use_wireguard is not defined or use_wireguard|bool is not true
+  notify: setup kubeconfig
+  run_once: yes
+
+- name: install k3s (master, with vpn)
+  shell: |
+    export CIDR="{{ CIDR }}"; \
+    export K3S_KUBECONFIG_MODE="644"; \
+    export INSTALL_K3S_EXEC="--no-deploy traefik --no-flannel --cluster-cidr $CIDR --cluster-init"; \
+    curl -sfL https://get.k3s.io | sh -
+  become: yes
+  tags: k3s, create-cluster, cluster
+  when: use_wireguard is defined and use_wireguard|bool is true
+  notify: setup kubeconfig
+  run_once: yes
+
+- name: set master_node to {{ ansible_fqdn }} ({{ ansible_default_ipv4.address }})
+  set_fact: 
+    master_node: "{{ ansible_default_ipv4.address }}"
+  tags: k3s, create-cluster, cluster
+  run_once: yes
+
+- name: node configured
+  set_fact: 
+    configured_nodes:  "{{ configured_nodes + [ansible_default_ipv4.address] }}"
+  tags: k3s, cluster
+  run_once: yes
+
+# With special thanks to https://github.com/aapit/ansible-k3s-rpi for some of the
+# logic around grabbing the auto-generated token.
+- name: Wait until node token is generated
+  wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+  run_once: true
+
+- name: Get node token
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_cluster_token
+  run_once: true
+
+- name: Clean up node token contents
+  set_fact: 
+    k3s_cluster_token: "{{ k3s_cluster_token['content'] | b64decode | replace('\n', '')}}"
+  run_once: yes
+
+- name: Print cluster node token
+  debug:
+    msg: "{{ k3s_cluster_token }}"
+
+- name: Set server address
+  set_fact:
+    k3s_server_address: "https://{{ ansible_default_ipv4.address }}:6443"
+  run_once: yes
+
+- name: Print server address
+  debug:
+    msg: "{{ k3s_server_address }}"

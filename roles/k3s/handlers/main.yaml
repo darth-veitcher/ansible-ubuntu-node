@@ -1,0 +1,15 @@
+---
+# file: roles/k3s/handlers/main.yaml
+
+# k3s writes config to /etc/rancher/k3s/k3s.yaml
+# by convention this should be available to our user at ~/.kube/config
+- name: setup kubeconfig
+  shell: kubectl config view --raw >{{user_home.stdout}}/.kube/config
+  become: true
+  tags: k3s, join-cluster, cluster
+
+# keep track of what we've installed
+- name: node configured
+  set_fact: 
+    configured_nodes:  "{{ configured_nodes + [ansible_default_ipv4.address] }}"
+  tags: k3s, cluster

@@ -1,0 +1,77 @@
+---
+# file: roles/k3s/tasks/kilo.yaml
+# Sets up wireguard VPN between nodes
+
+- name: obtain latest manifest
+  get_url:
+    url: https://raw.githubusercontent.com/squat/kilo/master/manifests/kilo-k3s.yaml
+    dest: roles/k3s/files/kilo-k3s.yaml
+    mode: '0640'
+    force: yes
+  tags: k3s, kilo, localhost
+  become: no
+  delegate_to: "localhost"
+
+- name: force full mesh vpn topology
+  lineinfile:
+    path: roles/k3s/files/kilo-k3s.yaml
+    line: '        - --mesh-granularity=full'
+    insertafter: '- --hostname='
+    state: present
+  tags: k3s, kilo, localhost
+  become: no
+  delegate_to: "localhost"
+
+- name: copy across manifest
+  copy:
+    src: roles/k3s/files/kilo-k3s.yaml
+    dest: ~/kilo-k3s.yaml
+  become: no
+  tags: k3s, kilo
+
+- name: add kilo0 interface to ufw
+  ufw:
+    rule: allow
+    name: k3s
+    interface: kilo0
+    direction: in
+  tags: firewall, k3s, kilo
+
+# TODO: refactor into a library
+# Kubernetes Health
+- name: ensure kubernetes cluster is reachable
+  wait_for:
+    port: 6443
+    host: 127.0.0.1
+    state: started
+    delay: 10
+  tags: k3s, cluster
+
+# thanks to https://stackoverflow.com/a/47449216/322358
+- name: wait for cluster info
+  command: kubectl get nodes
+  register: cmd_res
+  retries: 5
+  delay: 10
+  until: cmd_res.stdout.find("Ready") >= 1
+  become: no
+  tags: k3s, cluster
+
+- name: ensure kilo manifest is loaded
+  command: kubectl apply -f ~/kilo-k3s.yaml
+  become: no
+  tags: k3s, kilo
+
+- name: delete tmp file (local)
+  file:
+    path: roles/k3s/files/kilo-k3s.yaml
+    state: absent
+  delegate_to: "localhost"
+  become: no
+  tags: k3s, kilo, localhost
+
+- name: delete tmp file (remote)
+  file:
+    path: ~/kilo-k3s.yaml
+    state: absent
+  tags: k3s, kilo

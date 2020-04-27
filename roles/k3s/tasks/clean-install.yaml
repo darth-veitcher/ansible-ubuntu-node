@@ -1,0 +1,23 @@
+# file: roles/k3s/tasks/clean-uninstall.yaml
+# Removes and tidies up any pre-existing installs.
+- name: check for k3s uninstaller (master)
+  stat:
+    path: /usr/local/bin/k3s-uninstall.sh
+  tags: k3s
+  register: k3s_installed_master
+
+- name: uninstall k3s if found (master)
+  shell: /usr/local/bin/k3s-uninstall.sh
+  when: k3s_installed_master.stat.exists|bool
+  tags: k3s
+
+- name: check for k3s uninstaller (agent)
+  stat:
+    path: /usr/local/bin/k3s-agent-uninstall.sh
+  tags: k3s
+  register: k3s_installed_agent
+
+- name: uninstall k3s if found (agent)
+  shell: /usr/local/bin/k3s-agent-uninstall.sh
+  when: k3s_installed_agent.stat.exists|bool
+  tags: k3s
