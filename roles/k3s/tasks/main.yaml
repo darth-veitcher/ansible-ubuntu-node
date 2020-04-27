@@ -2,6 +2,7 @@
 # file: roles/k3s/tasks/main.yaml
 # Installs lightweight kubernetes (K3s)
 # https://www.k3s.io
+# TODO: replace references to `master_node` with `k3s_cluster_url`
 
 # Internal Variable
 - name: initialise list of configured nodes
