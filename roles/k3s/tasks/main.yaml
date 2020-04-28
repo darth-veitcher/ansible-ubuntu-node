@@ -82,12 +82,14 @@
     - cni0
     - kube-bridge
 
+# TODO: replace with targeted enablement of k3s to public IP addresses `curl -s http://ipv4.icanhazip.com`
 # Temporarily allow 0.0.0.0/0 to connect to 6443
 - name: allow access from 0.0.0.0/0 to k3s
   ufw:
     rule: allow
     name: k3s
     src: 0.0.0.0/0
+  tags: k3s, firewall
 
 # Join existing cluster
 - include: join-cluster.yaml
@@ -111,3 +113,4 @@
     name: k3s
     src: 0.0.0.0/0
     delete: yes
+  tags: k3s, firewall
