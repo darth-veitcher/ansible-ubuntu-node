@@ -10,11 +10,6 @@
     configured_nodes: []
   tags: k3s
 
-# VPN between nodes
-- include: wireguard.yaml
-  when: use_wireguard is defined and use_wireguard|bool
-  tags: wireguard, k3s
-
 # Firewall
 - name: install ufw profile for k3s
   template: >
@@ -75,13 +70,44 @@
   debug: var=configured_nodes
   tags: k3s, cluster
 
-# VPN
-- include: kilo.yaml
-  when: use_wireguard is defined and use_wireguard|bool
-  run_once: yes
-  tags: k3s, kilo
+# Firewall
+- name: allow kubernetes interfaces
+  ufw:
+    rule: allow
+    name: k3s
+    interface: "{{ item }}"
+    direction: in
+  tags: firewall, k3s
+  loop:
+    - cni0
+    - kube-bridge
+
+# Temporarily allow 0.0.0.0/0 to connect to 6443
+- name: allow access from 0.0.0.0/0 to k3s
+  ufw:
+    rule: allow
+    name: k3s
+    src: 0.0.0.0/0
 
 # Join existing cluster
 - include: join-cluster.yaml
   when: k3s_server_address is defined and ansible_default_ipv4.address not in configured_nodes
   tags: k3s, cluster
+
+# VPN
+- include: wireguard.yaml
+  when: use_wireguard is defined and use_wireguard|bool
+  tags: wireguard, k3s
+
+- include: kilo.yaml
+  when: use_wireguard is defined and use_wireguard|bool
+  run_once: yes
+  tags: k3s, kilo
+
+# Disable temporary rule
+- name: disable access from 0.0.0.0/0 to k3s
+  ufw:
+    rule: allow
+    name: k3s
+    src: 0.0.0.0/0
+    delete: yes

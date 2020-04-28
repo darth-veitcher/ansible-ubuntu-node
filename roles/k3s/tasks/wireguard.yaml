@@ -20,3 +20,20 @@
     name: wireguard
     state: present
   tags: wireguard
+
+# Firewall
+- name: add wireguard definition to ufw
+  template: >
+            src=templates/ufw/wireguard.conf.j2
+            dest=/etc/ufw/applications.d/wireguard owner=root group=root mode=0644
+  tags: firewall, wireguard
+
+- name: update ufw knowledge of wireguard app profile
+  shell: ufw app update wireguard
+  tags: firewall, wireguard
+
+- name: allow access to wireguard
+  ufw:
+    rule: allow
+    name: wireguard
+  tags: firewall, wireguard
