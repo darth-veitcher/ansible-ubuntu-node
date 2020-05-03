@@ -1,0 +1,7 @@
+k8s_version: 1.18
+
+# https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.18.md#dependencies
+# https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.16.md#dependencies
+# The list of validated docker versions remains unchanged.
+#   - The current list is 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09. (#72823, #72831)
+k8s_docker_version: 18.09

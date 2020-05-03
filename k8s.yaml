@@ -1,0 +1,10 @@
+---
+# file: base.yaml
+# Playbook to deploy the `master` k3s role onto a server 
+# to bootstrap a cluster
+- hosts: all
+  become: true
+  roles:
+    # - base
+    # - kvm
+    - kubeadm
