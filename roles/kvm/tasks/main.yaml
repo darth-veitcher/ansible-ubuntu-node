@@ -25,6 +25,16 @@
     state: latest
     install_recommends: no
   tags: apt, kvm
+  when: ansible_distribution_major_version|int == 18
+
+# libvirt-bin does not exist in 20.04 / focal
+- name: install virtualisation packages
+  apt:
+    name: [qemu, qemu-system, qemu-utils, qemu-kvm, libvirt-daemon, libvirt-daemon-system, libvirt-daemon-system-systemd, virtinst, bridge-utils, cpu-checker]
+    state: latest
+    install_recommends: no
+  tags: apt, kvm
+  when: ansible_distribution_major_version|int == 20
 
 - name: enable libvirtd
   service: name=libvirtd state=restarted enabled=yes
