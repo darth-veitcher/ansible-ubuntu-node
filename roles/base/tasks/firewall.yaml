@@ -2,6 +2,15 @@
 # file: roles/base/tasks/ssh.yaml
 # Performs some basic firewall config setup and hardening
 
+- name: configure the kernel to keep connections alive when enabling the firewall
+  sysctl:
+    name: net.netfilter.nf_conntrack_tcp_be_liberal
+    value: "1"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  tags: firewall, sysctl
+
 # UFW
 - name: install ufw
   apt: 
@@ -9,6 +18,11 @@
     state: latest
     install_recommends: no
   tags: apt, firewall
+
+- name: reset firewall
+  ufw: state=reset
+  tags: firewall
+  when: reset_firewall is defined and reset_firewall|bool
 
 - name: setup ufw
   ufw: state=disabled policy=deny  # disable so we can allow SSH first....

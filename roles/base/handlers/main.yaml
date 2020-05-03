@@ -8,3 +8,4 @@
 
 - name: restart ufw
   service: name=ufw state=restarted enabled=yes
+  ignore_errors: true
