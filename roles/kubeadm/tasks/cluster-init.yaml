@@ -10,6 +10,7 @@
 - name: pull images
   command: kubeadm config images pull
   tags: cluster, cluster_init, preflight
+  when: clean_install is defined and clean_install|bool
 
 - name: uninstall existing instance
   command: |
@@ -20,13 +21,15 @@
     rm -rf /opt/cni/bin; \
     rm -rf /var/lib/etcd; \
     rm -rf /etc/cni/net.d
-  tags: cluster, cluster_init, cluster_clean
+  tags: cluster, cluster_init, clean_install
   ignore_errors: true  
+  when: clean_install is defined and clean_install|bool
 
 - name: initialise cluster
   command: kubeadm init --pod-network-cidr={{ CIDR }}
   tags: cluster, cluster_init
   register: cluster_init_output
+  when: clean_install is defined and clean_install|bool
 
 - name: find {{deploy_user_name}} $HOME directory
   shell: cat /etc/passwd | grep {{deploy_user_name}} | cut -d":" -f6
@@ -41,12 +44,26 @@
     group: "{{deploy_user_name}}"
   tags: cluster_init, cluster, users
 
+- name: delete existing kubeconfig
+  shell: 
+    cmd: rm -rf {{ user_home.stdout }}/.kube/config
+    warn: false
+  tags: cluster_init, cluster, users
+
 - name: create kubeconfig for {{ deploy_user_name }}
   shell: |
     export KUBECONFIG=/etc/kubernetes/admin.conf; \
-    kubectl config view --raw >{{ user_home.stdout }}/.kube/config; \
-    chown $(id -u {{deploy_user_name}}):$(id -g {{deploy_user_name}}) {{ user_home.stdout }}/.kube/config
+    kubectl config view --raw >"{{ user_home.stdout }}"/.kube/config; \
+    chown $(id -u "{{deploy_user_name}}"):$(id -g "{{deploy_user_name}}") "{{ user_home.stdout }}"/.kube/config
+  become: true
   tags: cluster_init, cluster, users
 
 - debug: var=cluster_init_output.stdout
   tags: cluster, cluster_init
+
+- name: create local copy of kubeconfig
+  fetch:
+    src: "{{ user_home.stdout }}/.kube/config"
+    dest: deploy/.kube/config
+    flat: yes
+  tags: cluster, cluster_init, get_config

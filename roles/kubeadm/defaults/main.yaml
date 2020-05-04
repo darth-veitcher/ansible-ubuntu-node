@@ -17,5 +17,5 @@ CIDR: 10.244.0.0/16
 # Whether to use Wireguard VPN between nodes
 use_wireguard: true
 
-# Whether to wipe existing node installs of k3s
-clean_install: true
+# Whether to wipe existing node installs
+clean_install: false
