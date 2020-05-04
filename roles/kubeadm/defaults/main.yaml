@@ -1,7 +1,21 @@
-k8s_version: 1.18
+---
+# file: roles/kubeadm/defaults/main.yaml
 
 # https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.18.md#dependencies
 # https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.16.md#dependencies
 # The list of validated docker versions remains unchanged.
 #   - The current list is 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09. (#72823, #72831)
+k8s_version: 1.18
 k8s_docker_version: 18.09
+
+CIDR: 10.244.0.0/16
+
+# Generate a new one of these please...
+# head -c48 /dev/urandom | base64 | tr -d "\n"
+# K3S_TOKEN: g0hzuguv0CwL1EaAgju7aP8DxOKyQOQ3/ies0tEjmaV5I5Mj1HQFClilTQNDwo4l
+
+# Whether to use Wireguard VPN between nodes
+use_wireguard: true
+
+# Whether to wipe existing node installs of k3s
+clean_install: true

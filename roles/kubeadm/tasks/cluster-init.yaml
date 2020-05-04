@@ -1,0 +1,52 @@
+---
+# file: roles/kubeadm/tasks/cluster-init.yaml
+# Initialises a cluster with kubeadm
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#initializing-your-control-plane-node
+# TODO: listen specifically on the wireguard interface
+# TODO: implement HA with stacked control plane and etcd nodes
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/#stacked-control-plane-and-etcd-nodes
+# TODO: uninstall pretty fragile at the moment..
+
+- name: pull images
+  command: kubeadm config images pull
+  tags: cluster, cluster_init, preflight
+
+- name: uninstall existing instance
+  command: |
+    export KUBECONFIG=/etc/kubernetes/admin.conf; \
+    kubeadm reset -f; \
+    rm -rf ~/.kube; \
+    rm -rf /etc/kubernetes; \
+    rm -rf /opt/cni/bin; \
+    rm -rf /var/lib/etcd; \
+    rm -rf /etc/cni/net.d
+  tags: cluster, cluster_init, cluster_clean
+  ignore_errors: true  
+
+- name: initialise cluster
+  command: kubeadm init --pod-network-cidr={{ CIDR }}
+  tags: cluster, cluster_init
+  register: cluster_init_output
+
+- name: find {{deploy_user_name}} $HOME directory
+  shell: cat /etc/passwd | grep {{deploy_user_name}} | cut -d":" -f6
+  register: user_home
+  tags: cluster_init, cluster, users
+
+- name: ensure {{user_home.stdout}}/.kube exists and is owned by {{deploy_user_name}}
+  file:
+    path: "{{user_home.stdout}}/.kube"
+    state: directory
+    owner: "{{deploy_user_name}}"
+    group: "{{deploy_user_name}}"
+  tags: cluster_init, cluster, users
+
+- name: create kubeconfig for {{ deploy_user_name }}
+  shell: |
+    export KUBECONFIG=/etc/kubernetes/admin.conf; \
+    kubectl config view --raw >{{ user_home.stdout }}/.kube/config; \
+    chown $(id -u {{deploy_user_name}}):$(id -g {{deploy_user_name}}) {{ user_home.stdout }}/.kube/config
+  tags: cluster_init, cluster, users
+
+- debug: var=cluster_init_output.stdout
+  tags: cluster, cluster_init

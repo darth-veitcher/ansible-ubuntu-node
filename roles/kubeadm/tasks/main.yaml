@@ -142,3 +142,9 @@
               line="# swap disabled"
               state=present
   tags: preflight
+
+# cluster
+- include: cluster-init.yaml
+  when: control_plane_endpoint is not defined
+  tags: cluster, cluster_init
+  run_once: yes
