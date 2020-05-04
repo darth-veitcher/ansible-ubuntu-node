@@ -148,3 +148,9 @@
   when: control_plane_endpoint is not defined
   tags: cluster, cluster_init
   run_once: yes
+
+- name: remove master node taint
+  shell: kubectl taint nodes --all node-role.kubernetes.io/master-
+  tags: cluster
+  become: no
+  run_once: yes

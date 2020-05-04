@@ -50,6 +50,21 @@
     warn: false
   tags: cluster_init, cluster, users
 
+- name: ensure /root/.kube exists and is owned by root
+  file:
+    path: /root/.kube
+    state: directory
+    owner: root
+    group: root
+  tags: cluster_init, cluster, users
+
+- name: create kubeconfig for root
+  shell: |
+    export KUBECONFIG=/etc/kubernetes/admin.conf; \
+    kubectl config view --raw >/root/.kube/config
+  become: true
+  tags: cluster_init, cluster, users
+
 - name: create kubeconfig for {{ deploy_user_name }}
   shell: |
     export KUBECONFIG=/etc/kubernetes/admin.conf; \
@@ -67,3 +82,5 @@
     dest: deploy/.kube/config
     flat: yes
   tags: cluster, cluster_init, get_config
+
+- include: cluster-init-cni.yaml
