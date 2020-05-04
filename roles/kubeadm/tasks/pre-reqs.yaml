@@ -1,0 +1,148 @@
+# file: roles/kubeadm/tasks/pre-reqs.yaml
+# Sets up necessary shared pre-reqs for both masters and workers
+
+- name: enable forwarding of packets in the host kernel
+  sysctl:
+    name: net.netfilter.nf_conntrack_tcp_be_liberal
+    value: "1"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  tags: firewall, sysctl
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+
+# APT
+- name: install seed packages
+  apt:
+    name: [apt-transport-https, ca-certificates, curl, gnupg-agent, software-properties-common, p7zip-full, net-tools]
+    state: latest
+    install_recommends: no
+    update_cache: yes
+  tags: apt
+
+- name: add the docker repository key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  tags: apt
+
+# NB: 2020.05.03 - fails with focal (20.04 LTS) as not yet available
+# so revert to Bionic (18.04 LTS)
+- name: determine docker repo address
+  shell: |
+    echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+    $(lsb_release -cs) \
+    stable"
+  register: docker_repo_address
+  tags: apt
+  when: ansible_distribution_major_version|int < 20
+
+# TODO: replace when this is available
+- name: determine docker repo address
+  shell: |
+    echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+    bionic \
+    stable"
+  register: docker_repo_address
+  tags: apt
+  when: ansible_distribution_major_version|int >= 20
+
+- debug: var=docker_repo_address
+
+- name: add docker repository
+  apt_repository:
+    repo: "{{ docker_repo_address.stdout }}"
+    state: present
+  tags: apt
+
+- name: update APT package cache
+  apt: update_cache=yes
+  tags: apt
+
+- name: identify docker package in apt-cache
+  shell: |
+    echo $(apt-cache madison docker-ce | grep {{ k8s_docker_version }} | head -1 | awk '{print $3}')
+  register: docker_package
+  tags: apt
+
+- name: remove existing packages
+  apt:
+    name: [docker, docker-engine, docker.io, containerd, runc]
+    state: absent
+  tags: apt
+
+- name: install docker package {{ docker_package.stdout }}
+  apt:
+    name: ["docker-ce={{ docker_package.stdout }}", "docker-ce-cli={{ docker_package.stdout }}", containerd.io ]
+    state: present
+    force: yes
+    dpkg_options: force-downgrade
+    install_recommends: no
+    update_cache: yes
+  tags: apt
+
+# USER
+- name: allow {{ deploy_user_name }} to run docker without sudo
+  user:
+    name: "{{ deploy_user_name }}"
+    state: present
+    append: yes
+    groups: docker
+  tags: users
+
+# KUBERNETES
+# add the evil google apt signing key
+- name: add the docker repository key
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+  tags: apt
+
+# toolset available for 16.04 upwards so uses xenial codename
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+- name: add kubernetes repo
+  apt_repository:
+    repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+    filename: kubernetes
+
+- name: update APT package cache
+  apt: update_cache=yes
+  tags: apt
+
+- name: install kubernetes bootstrap packages
+  apt:
+    name: [kubelet, kubeadm, kubectl, jq]
+    state: present
+    install_recommends: no
+    update_cache: no
+  tags: apt
+
+# pre-flight fixes
+- name: configure docker daemon
+  copy:
+    src: roles/kubeadm/files/docker-daemon.json
+    dest: /etc/docker/daemon.json
+  tags: preflight
+
+- name: ensure systemd directory exists for docker dropin override
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+  tags: preflight
+  notify:
+    - reload docker
+    - restart docker
+
+- name: ensure swap is off
+  command: swapoff -a
+  tags: preflight
+
+- name: ensure swap isnt enabled in fstab
+  lineinfile: dest=/etc/fstab
+              regexp="^#?((.*swap.*))$"
+              line="# swap disabled"
+              state=present
+  tags: preflight

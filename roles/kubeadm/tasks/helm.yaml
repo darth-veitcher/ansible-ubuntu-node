@@ -1,0 +1,36 @@
+---
+# file: roles/kubeadm/tasks/helm.yaml
+# Installs helm with the default stable repo
+
+- name: check for existing helm installation
+  stat:
+    path: /usr/local/bin/helm
+  register: helm_binary
+  tags: helm
+
+- name: ensure helm installed
+  command: 
+    cmd: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+    warn: false
+  tags: helm
+  run_once: yes
+  when: helm_binary.stat.exists|bool is false
+
+- name: add stable repo
+  command: helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+  tags: helm
+  run_once: yes
+
+- name: update stable repo
+  command: helm repo update
+  tags: helm
+  run_once: yes
+
+# helm install my-ingress stable/nginx-ingress \
+#     --set controller.kind=DaemonSet \
+#     --set controller.service.type=LoadBalancer \
+#     --set controller.hostNetwork=true
+
+# helm install my-ingress stable/nginx-ingress \
+#     --set controller.kind=Deployment \
+#     --set controller.service.type=LoadBalancer

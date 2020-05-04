@@ -19,3 +19,6 @@ use_wireguard: true
 
 # Whether to wipe existing node installs
 clean_install: false
+
+# Installations
+ingress_release_name: nginx-ingress
