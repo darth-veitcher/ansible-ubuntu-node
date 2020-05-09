@@ -1,0 +1,75 @@
+# file: roles/kubeadm/tasks/firewall.yaml
+# Applies some initial sane defaults via UFW for a kubernetes node
+
+- name: enable forwarding of packets in the host kernel
+  sysctl:
+    name: net.netfilter.nf_conntrack_tcp_be_liberal
+    value: "1"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  tags: firewall, sysctl
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+
+- name: install ufw profile for k8s
+  template: >
+            src=templates/ufw/k8s.conf.j2
+            dest=/etc/ufw/applications.d/k8s owner=root group=root mode=0644
+  tags: firewall, k8s
+
+- name: update ufw knowledge of k8s app profile
+  shell: ufw app update k8s
+  tags: firewall, k8s
+
+- name: allow access from {{ CIDR }} and localhost to k8s
+  ufw:
+    rule: allow
+    name: k8s
+    src: "{{ item }}"
+  loop:
+    - 127.0.0.1
+    - "{{ CIDR }}"
+  tags: firewall, k8s
+
+# Generate a unique list of all IPs for hosts in the play
+# TODO: might be useful to refactor into a shared library?
+- name: initialise list of ips
+  set_fact:
+    all_ips: []
+  tags: firewall, k8s, intracluster
+  run_once: yes
+
+- name: set ips
+  set_fact: 
+    all_ips:  "{{ all_ips + [hostvars[item].ansible_all_ipv4_addresses] + [hostvars[item].ansible_host] }}"
+  loop: "{{ ansible_play_batch }}"
+  tags: firewall, k8s, intracluster
+  run_once: yes
+
+- name: print ips
+  debug: var=all_ips
+  tags: firewall, k8s, intracluster
+  run_once: yes
+
+# This assumes we have already allowed all private networks
+# otherwise remove the | ipaddr('public') filter pipe at the end.
+# see: https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters_ipaddr.html
+# and: https://docs.ansible.com/ansible/latest/user_guide/playbooks_loops.html
+# TODO: refactor out hardcoding into variables and branching logic
+- name: allow access from all nodes to k8s on other nodes
+  ufw:
+    rule: allow
+    name: k8s
+    src: "{{ item }}"
+  tags: firewall, k8s, intracluster
+  loop: "{{ all_ips|flatten|ipaddr('public') }}"
+
+- name: allow access from other nodes to our ip address
+  ufw:
+    rule: allow
+    src: "{{ item }}"
+    dest: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+  tags: firewall, k8s, intracluster
+  loop: "{{ all_ips|flatten|ipaddr('public') }}"

@@ -1,0 +1,18 @@
+---
+- name: test
+  hosts: all
+  become: yes
+  tasks:
+  - name: print dist
+    debug: var=ansible_distribution
+    tags: k3s, join-cluster, cluster
+  - name: print major
+    debug: var=ansible_distribution_major_version
+    tags: k3s, join-cluster, cluster
+  - name: ip addresses
+    debug: var=hostvars[item].ansible_default_ipv4.address
+    with_items: "{{ ansible_play_batch }}"
+    run_once: true
+  - name: inventory_hostname
+    debug: var=inventory_hostname
+    with_items: "{{ ansible_play_batch }}"

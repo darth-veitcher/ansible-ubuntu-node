@@ -1,0 +1,8 @@
+# file: /etc/ufw/applications.d/k8s
+# Used to configure the ufw definition for Kubernetes
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#check-required-ports
+
+[k8s]
+title=Kubernetes (k8s)
+description=Kubernetes (K8s) is an open-source system for automating deployment, scaling, and management of containerized applications.
+ports=6443,2379:2380,10250,10251,10252,30000:32767/tcp

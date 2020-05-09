@@ -1,3 +1,50 @@
 # file: roles/kubeadm/tasks/cluster-join.yaml
 # Joins an existing cluster
 # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#join-nodes
+# kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-ca-cert-hash sha256:<hash>
+# kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-unsafe-skip-ca-verification
+
+- debug:
+    msg: "Joining cluster with {{ token }}"
+  tags: cluster, join_cluster
+
+- name: add {{ master_node }} to hosts file at {{ hostvars[master_node].ansible_host }}
+  lineinfile: dest=/etc/hosts
+              regexp="^.*{{ master_node }}$"
+              line="{{ hostvars[master_node].ansible_host }} {{ master_node_ip }} {{ master_node }}"
+              state=present
+  tags: cluster, join_cluster
+
+- name: check we can connect to master on 6443
+  command: 
+    warn: false
+    cmd: curl --insecure https://{{ master_node_ip }}:6443
+  register: cmd_res
+  retries: 5
+  delay: 10
+  until: cmd_res.stdout.find("apiVersion") >= 1
+  become: no
+  tags: join-cluster, cluster
+
+- name: print join command
+  debug:
+    msg: "{{ kubeadm_join_command }} --discovery-token-unsafe-skip-ca-verification"
+  tags: cluster, join_cluster
+
+- name: join cluster with command
+  command: "{{ kubeadm_join_command }} --discovery-token-unsafe-skip-ca-verification"
+  tags: cluster, join_cluster
+  register: cluster_join_output
+  when: hostvars[inventory_hostname].is_master_node is not defined or hostvars[inventory_hostname].is_master_node|bool is not true
+
+- name: print join command
+  debug:
+    msg: "{{ kubeadm_join_command }} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key {{ certificate_key }}"
+  tags: cluster, join_cluster
+  when: hostvars[inventory_hostname].is_master_node is defined and hostvars[inventory_hostname].is_master_node|bool
+
+- name: join cluster with command
+  command: "{{ kubeadm_join_command }} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key {{ certificate_key }}"
+  tags: cluster, join_cluster
+  register: cluster_join_output
+  when: hostvars[inventory_hostname].is_master_node is defined and hostvars[inventory_hostname].is_master_node|bool

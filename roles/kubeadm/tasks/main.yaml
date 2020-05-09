@@ -7,9 +7,16 @@
 - include: pre-reqs.yaml
   tags: prereqs
 
+- include: wipe-node.yaml
+  tags: cluster, cluster_init, clean_install
+  when: clean_install is defined and clean_install|bool
+
+- include: firewall.yaml
+  tags: cluster, firewall
+
 # Initialise a cluster (we don't have any master nodes)
 - include: cluster-init.yaml
-  when: control_plane_endpoint is not defined
+  when: master_node is not defined or inventory_hostname == master_node
   tags: cluster, cluster_init
   run_once: yes
 
@@ -17,6 +24,9 @@
 # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#join-nodes
 # kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-ca-cert-hash sha256:<hash>
 # kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-unsafe-skip-ca-verification
+- include: cluster-join.yaml
+  when: inventory_hostname != master_node
+  tags: cluster, cluster_join
 
 - name: remove master node taint
   shell: kubectl taint nodes --all node-role.kubernetes.io/master-

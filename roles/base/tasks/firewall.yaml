@@ -9,6 +9,7 @@
     state: present
     sysctl_set: yes
     reload: yes
+    ignoreerrors: yes
   tags: firewall, sysctl
 
 # UFW

@@ -1,0 +1,37 @@
+# performs a wipe of the node
+- name: check for existing install
+  command: 
+    warn: false
+    cmd: curl --insecure https://localhost:6443
+  register: cmd_res
+  tags: cluster, cluster_init, clean_install
+  ignore_errors: true
+
+- name: check for filesystem
+  stat:
+    path: /etc/kubernetes
+  register: k8s_dir
+  tags: cluster, clean_install
+
+- name: get static hostname
+  command: hostnamectl --static
+  register: hostnamectl
+  tags: cluster
+
+- debug: var=hostnamectl.stdout
+  tags: cluster
+
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#tear-down
+- name: uninstall existing instance
+  raw: |
+    kubectl drain {{ hostnamectl.stdout }} --delete-local-data=true --ignore-daemonsets=true --force; \
+    kubectl delete node {{ hostnamectl.stdout }}; \
+    kubeadm reset -f; \
+    rm -rf ~/.kube; \
+    rm -rf /etc/kubernetes; \
+    rm -rf /opt/cni/bin; \
+    rm -rf /var/lib/etcd; \
+    rm -rf /etc/cni/net.d
+  tags: cluster, clean_install
+  ignore_errors: true  
+  when: (cmd_res.stdout.find("apiVersion") >= 1) or (k8s_dir.stat.exists|bool)

@@ -12,41 +12,10 @@
   tags: cluster, cluster_init, preflight
   when: clean_install is defined and clean_install|bool
 
-- name: check for existing install
-  command: 
-    warn: false
-    cmd: curl --insecure https://localhost:6443
-  register: cmd_res
-  tags: cluster, cluster_init, clean_install
-  ignore_errors: true
-
-- name: get static hostname
-  command: hostnamectl --static
-  register: hostnamectl
-  tags: cluster
-
-- debug: var=hostnamectl.stdout
-  tags: cluster
-
-# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#tear-down
-- name: uninstall existing instance
-  raw: |
-    kubectl drain {{ hostnamectl.stdout }} --delete-local-data=true --ignore-daemonsets=true --force; \
-    kubectl delete node {{ hostnamectl.stdout }}; \
-    kubeadm reset -f; \
-    rm -rf ~/.kube; \
-    rm -rf /etc/kubernetes; \
-    rm -rf /opt/cni/bin; \
-    rm -rf /var/lib/etcd; \
-    rm -rf /etc/cni/net.d
-  tags: cluster, cluster_init, clean_install
-  ignore_errors: true  
-  when: clean_install is defined and clean_install|bool and cmd_res.stdout.find("apiVersion") >= 1
-
 # single control-plane
 # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
 - name: initialise cluster
-  command: kubeadm init --pod-network-cidr={{ CIDR }} --control-plane-endpoint={{ hostnamectl.stdout }}
+  command: kubeadm init --pod-network-cidr={{ CIDR }} --control-plane-endpoint={{ hostnamectl.stdout }} --upload-certs
   tags: cluster, cluster_init
   register: cluster_init_output
   when: (clean_install is defined and clean_install|bool) or (cmd_res.stdout.find("apiVersion") == -1)
@@ -100,9 +69,6 @@
   become: true
   tags: cluster_init, cluster, users
 
-- debug: var=cluster_init_output.stdout
-  tags: cluster, cluster_init
-
 # Find the join token and kubeadm command
 # https://stackoverflow.com/a/45743739/322358
 - name: set join token fact
@@ -111,26 +77,52 @@
   vars:
     regexp: '--token\s(.*[^\s])\s\\'
   tags: cluster, cluster_init
+
 - debug: 
     msg: "Token set as: {{ token }}"
   tags: cluster, cluster_init
+
+- name: set join certificate
+  set_fact:
+    certificate_key: "{{ cluster_init_output.stdout | regex_search(regexp,'\\1') | first}}"
+  vars:
+    regexp: '--certificate-key\s(.*[^\s])\n'
+  tags: cluster, cluster_init
+
+- debug: 
+    msg: "certificate_key set as: {{ certificate_key }}"
+  tags: cluster, cluster_init
+
 - name: set join kubeadm command
   set_fact:
     kubeadm_join_command: "{{ cluster_init_output.stdout | regex_search(regexp,'\\1') | first}}"
   vars:
     regexp: '(kubeadm.* --token\s.*[^\s])\s\\'
   tags: cluster, cluster_init
+
 - debug: 
     msg: "Kubeadm join command set as: {{ kubeadm_join_command }}"
   tags: cluster, cluster_init
 
+# Set variables for other nodes
+# - name: set master_node variable to {{ inventory_hostname }}
+#   set_fact:
+#     master_node: "{{ inventory_hostname }}"
+#   tags: cluster, cluster_init
+
 - name: get public ip address
-  shell: dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'\"' '{ print $2}'
+  shell: /usr/bin/dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'\"' '{ print $2}'
   register: public_ip_lookup
   tags: cluster, cluster_init
+
 - name: set master_node_ip variable to {{ public_ip_lookup.stdout }}
   set_fact:
     master_node_ip: "{{ public_ip_lookup.stdout }}"
+  tags: cluster, cluster_init
+  when: public_ip_lookup is defined
+
+- debug:
+    msg: "Cluster configured for 'master_node': {{ inventory_hostname }} on ips {{ hostvars[inventory_hostname].ansible_host }} and {{ master_node_ip }}"
   tags: cluster, cluster_init
 
 - name: create local copy of kubeconfig
@@ -147,3 +139,8 @@
 - include: helm.yaml
   tags: cluster, cluster_init, helm
   run_once: yes
+
+- name: set master_node variable to {{ inventory_hostname }}
+  set_fact:
+    master_node: "{{ inventory_hostname }}"
+  tags: cluster, cluster_init
