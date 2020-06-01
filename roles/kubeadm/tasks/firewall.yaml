@@ -1,9 +1,15 @@
 # file: roles/kubeadm/tasks/firewall.yaml
 # Applies some initial sane defaults via UFW for a kubernetes node
 
-- name: enable forwarding of packets in the host kernel
+- name: load br_netfilter
+  modprobe:
+    name: br_netfilter
+    state: present
+  tags: firewall, sysctl
+
+- name: enable forwarding of packets in the host kernel and allow iptables to see bridged traffic
   sysctl:
-    name: net.netfilter.nf_conntrack_tcp_be_liberal
+    name: "{{ item }}"
     value: "1"
     state: present
     sysctl_set: yes
@@ -12,6 +18,8 @@
   loop:
     - net.ipv4.ip_forward
     - net.ipv6.conf.all.forwarding
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
 
 - name: install ufw profile for k8s
   template: >

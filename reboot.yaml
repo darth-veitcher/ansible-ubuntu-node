@@ -1,0 +1,8 @@
+---
+- name: reboot
+  hosts: all
+  become: yes
+  tasks:
+  - ufw:
+      state: reset
+  - command: shutdown -r now

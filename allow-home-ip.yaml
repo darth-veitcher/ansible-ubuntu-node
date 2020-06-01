@@ -1,0 +1,20 @@
+# adds home IP address to whitelist in firewalls
+- name: whitelist
+  hosts: all
+  become: yes
+  pre_tasks:
+  - name: get public ip address
+    shell: dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'\"' '{ print $2}'
+    register: public_ip_lookup
+    delegate_to: "donaldson.local"
+    become: no
+  - debug:
+      var=public_ip_lookup.stdout
+    delegate_to: "donaldson.local"
+    become: no
+  tasks:
+  - name: allow access from {{ public_ip_lookup.stdout }} to k8s on nodes
+    ufw:
+      rule: allow
+      name: k8s
+      src: "{{ public_ip_lookup.stdout }}"

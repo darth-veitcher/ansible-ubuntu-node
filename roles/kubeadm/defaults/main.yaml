@@ -16,6 +16,7 @@ CIDR: 10.244.0.0/16
 
 # Whether to use Wireguard VPN between nodes
 use_wireguard: true
+wireguard_cidr: 10.10.0.0/24
 
 # Whether to wipe existing node installs
 clean_install: false

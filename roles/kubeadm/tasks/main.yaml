@@ -4,19 +4,21 @@
 
 # TODO: take into account wireguard and listen to specific interface
 
+# NODE PREP
 - include: pre-reqs.yaml
   tags: prereqs
 
 - include: wipe-node.yaml
-  tags: cluster, cluster_init, clean_install
+  tags: cluster, cluster_init, clean_install, prereqs
   when: clean_install is defined and clean_install|bool
 
 - include: firewall.yaml
-  tags: cluster, firewall
+  tags: cluster, firewall, prereqs
 
+# NODE INSTALL
 # Initialise a cluster (we don't have any master nodes)
 - include: cluster-init.yaml
-  when: master_node is not defined or inventory_hostname == master_node
+  when: (master_node is not defined or inventory_hostname == master_node)
   tags: cluster, cluster_init
   run_once: yes
 
@@ -28,6 +30,7 @@
   when: inventory_hostname != master_node
   tags: cluster, cluster_join
 
+# CLUSTER PREP
 - name: remove master node taint
   shell: kubectl taint nodes --all node-role.kubernetes.io/master-
   tags: cluster

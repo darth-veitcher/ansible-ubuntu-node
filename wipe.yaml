@@ -1,0 +1,9 @@
+---
+- name: reboot
+  hosts: all
+  become: yes
+  tasks:
+  - ufw:
+      state: reset
+  - include: roles/kubeadm/tasks/wipe-node.yaml
+  - command: shutdown -r now
